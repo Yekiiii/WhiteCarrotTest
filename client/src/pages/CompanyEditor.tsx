@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../lib/axios";
 import { type Company, type Section, type Job, type Content, type Theme } from "../types";

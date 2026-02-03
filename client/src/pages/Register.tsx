@@ -55,11 +55,10 @@ export const Register: React.FC = () => {
       );
 
       // Step 3: Fetch the company to get the slug
-      const companyRes = await api.get("/companies/me", {
+      await api.get("/companies/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const _company = companyRes.data.company;
       navigate(`/dashboard`);
     } catch (err: any) {
       setError(err.response?.data?.error || "Registration failed. Please try again.");

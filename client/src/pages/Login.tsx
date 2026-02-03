@@ -27,11 +27,10 @@ export const Login: React.FC = () => {
 
       // Fetch company to redirect
       try {
-        const companyRes = await api.get<{ company: Company }>("/companies/me", {
+        await api.get<{ company: Company }>("/companies/me", {
           headers: { Authorization: `Bearer ${token}` }, // Explicitly pass token as state update might lag slightly if not careful, though usually synchronous in setToken it's safer to rely on API interceptor if we wait, but better here.
         });
         
-        const _company = companyRes.data.company;
         navigate(`/dashboard`);
       } catch (err: any) {
         if (err.response?.status === 404) {

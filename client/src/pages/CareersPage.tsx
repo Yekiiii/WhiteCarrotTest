@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../lib/axios";
 import { type Company, type Job, type Section, type Theme, type SectionTheme } from "../types";
