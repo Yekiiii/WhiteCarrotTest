@@ -10,6 +10,12 @@ export interface SectionTheme {
   accentColor?: string;
 }
 
+// Gallery image with caption
+export interface GalleryImage {
+  url: string;
+  caption?: string;
+}
+
 export interface Section {
   id: string;
   type: "hero" | "text" | "gallery" | "video" | "jobs" | "cta" | "custom";
@@ -22,7 +28,8 @@ export interface Section {
   // Additional config for specific types
   config?: {
     videoUrl?: string;
-    imageUrls?: string[];
+    imageUrls?: string[]; // Legacy support
+    images?: GalleryImage[]; // New format with captions
     ctaButtonText?: string;
     ctaButtonUrl?: string;
     layout?: "left" | "center" | "right";
@@ -31,6 +38,16 @@ export interface Section {
     backgroundValue?: string; // Hex color or gradient string
     overlayOpacity?: number; // 0 to 1
   };
+}
+
+// Social links
+export interface SocialLinks {
+  linkedin?: string;
+  twitter?: string;
+  instagram?: string;
+  facebook?: string;
+  youtube?: string;
+  website?: string;
 }
 
 export interface Theme {
@@ -87,6 +104,15 @@ export interface Company {
   name: string;
   slug: string;
   recruiterId: string;
+  
+  // Company branding (profile)
+  logoUrl?: string;
+  bannerUrl?: string;
+  description?: string;
+  
+  // Social links
+  socialLinks?: SocialLinks;
+  
   theme: Theme;
   content: Content;
   sections: Section[];

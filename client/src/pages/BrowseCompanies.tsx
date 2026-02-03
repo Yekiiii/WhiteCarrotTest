@@ -6,9 +6,21 @@ interface PublicCompany {
   _id: string;
   name: string;
   slug: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  description?: string;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    youtube?: string;
+    website?: string;
+  };
   theme: {
     logoUrl?: string;
     primaryColor?: string;
+    accentColor?: string;
     bannerUrl?: string;
   };
   content: {
@@ -234,14 +246,14 @@ export const BrowseCompanies: React.FC = () => {
                   className="h-24 relative"
                   style={{
                     backgroundColor: company.theme?.primaryColor || "#3B82F6",
-                    backgroundImage: company.theme?.bannerUrl
-                      ? `url(${resolveImageUrl(company.theme.bannerUrl)})`
+                    backgroundImage: (company.bannerUrl || company.theme?.bannerUrl)
+                      ? `url(${resolveImageUrl(company.bannerUrl || company.theme?.bannerUrl)})`
                       : undefined,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}
                 >
-                  {company.theme?.bannerUrl && (
+                  {(company.bannerUrl || company.theme?.bannerUrl) && (
                     <div className="absolute inset-0 bg-black/20" />
                   )}
                 </div>
@@ -249,9 +261,9 @@ export const BrowseCompanies: React.FC = () => {
                 {/* Logo */}
                 <div className="relative px-6">
                   <div className="absolute -top-8 left-6">
-                    {company.theme?.logoUrl ? (
+                    {(company.logoUrl || company.theme?.logoUrl) ? (
                       <img
-                        src={resolveImageUrl(company.theme.logoUrl)}
+                        src={resolveImageUrl(company.logoUrl || company.theme?.logoUrl)}
                         alt={`${company.name} logo`}
                         className="h-16 w-16 rounded-xl bg-white border-4 border-white shadow-md object-cover"
                       />

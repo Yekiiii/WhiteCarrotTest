@@ -110,9 +110,14 @@ export const getAllPublicCompanies = async (req, res) => {
           _id: company._id,
           name: company.name,
           slug: company.slug,
+          logoUrl: company.logoUrl,
+          bannerUrl: company.bannerUrl,
+          description: company.description,
+          socialLinks: company.socialLinks,
           theme: {
             logoUrl: company.theme?.logoUrl,
             primaryColor: company.theme?.primaryColor,
+            accentColor: company.theme?.accentColor,
             bannerUrl: company.theme?.bannerUrl,
           },
           content: {
@@ -137,13 +142,13 @@ export const getAllPublicCompanies = async (req, res) => {
 
 /**
  * PUT /companies/:id
- * Body: { name?, theme?, content?, sections? }
+ * Body: { name?, theme?, content?, sections?, logoUrl?, bannerUrl?, description?, socialLinks? }
  * Protected: only the owning recruiter can update.
  */
 export const updateCompany = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, theme, content, sections } = req.body;
+    const { name, theme, content, sections, logoUrl, bannerUrl, description, socialLinks } = req.body;
 
     const company = await Company.findById(id);
 
@@ -176,6 +181,23 @@ export const updateCompany = async (req, res) => {
 
     if (sections) {
       company.sections = sections;
+    }
+
+    // Handle new profile fields
+    if (logoUrl !== undefined) {
+      company.logoUrl = logoUrl;
+    }
+
+    if (bannerUrl !== undefined) {
+      company.bannerUrl = bannerUrl;
+    }
+
+    if (description !== undefined) {
+      company.description = description;
+    }
+
+    if (socialLinks) {
+      company.socialLinks = { ...(company.socialLinks?.toObject() || {}), ...socialLinks };
     }
 
     await company.save();

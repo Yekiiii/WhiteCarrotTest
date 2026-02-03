@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { type Company, type Section, type Theme, type SectionTheme } from "../../types";
+import { type Company, type Section, type Theme, type SectionTheme, type GalleryImage } from "../../types";
 import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ColorPicker } from "./ColorPicker";
 import { StylePresets, type StylePreset } from "./StylePresets";
@@ -12,6 +12,7 @@ interface EditorSidebarProps {
   onThemeBatchUpdate: (updates: Partial<Theme>) => void;
   onContentChange: (field: string, value: string) => void;
   onSectionsChange: (sections: Section[]) => void;
+  onCompanyChange: (updates: Partial<Company>) => void;
   onSave: () => void;
 }
 
@@ -142,13 +143,15 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   onThemeBatchUpdate,
   // onContentChange,
   onSectionsChange,
+  onCompanyChange,
   onSave,
 }) => {
   const { theme, sections } = company;
-  const [activeTab, setActiveTab] = useState<"sections" | "design" | "advanced">("sections");
+  const [activeTab, setActiveTab] = useState<"sections" | "design" | "profile" | "advanced">("sections");
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const handleApplyPreset = (preset: StylePreset) => {
     onThemeBatchUpdate({
@@ -248,39 +251,6 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
     return iconMap[type] || Icons.text;
   };
 
-  // Image upload handler
-  const handleImageUpload = async (sectionId: string, files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    setUploadingSectionId(sectionId);
-
-    try {
-      const section = sections.find((s) => s.id === sectionId);
-      const currentImages = (section?.config?.imageUrls as string[]) || [];
-      const newUrls: string[] = [];
-
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("image", file);
-
-        const response = await api.post<{ url: string }>("/uploads", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        newUrls.push(response.data.url);
-      }
-
-      updateSectionConfig(sectionId, { imageUrls: [...currentImages, ...newUrls] });
-    } catch (err) {
-      console.error("Upload failed:", err);
-      alert("Failed to upload image(s)");
-    } finally {
-      setUploading(false);
-      setUploadingSectionId(null);
-    }
-  };
-
   // Single Image Upload (for Hero Background)
   const handleSingleImageUpload = async (sectionId: string, file: File | null) => {
     if (!file) return;
@@ -308,12 +278,6 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
       setUploading(false);
       setUploadingSectionId(null);
     }
-  };
-
-  const removeImage = (sectionId: string, imageUrl: string) => {
-    const section = sections.find((s) => s.id === sectionId);
-    const currentImages = (section?.config?.imageUrls as string[]) || [];
-    updateSectionConfig(sectionId, { imageUrls: currentImages.filter((url) => url !== imageUrl) });
   };
 
   const sortedSections = [...sections].sort((a, b) => a.order - b.order);
@@ -524,7 +488,51 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
         );
 
       case "gallery":
-        const imageUrls = (section.config?.imageUrls as string[]) || [];
+        // Support both legacy imageUrls and new images format with captions
+        const galleryImages: GalleryImage[] = section.config?.images || 
+          (section.config?.imageUrls || []).map((url: string) => ({ url, caption: "" }));
+        
+        const updateGalleryImages = (newImages: GalleryImage[]) => {
+          updateSectionConfig(section.id, { 
+            images: newImages,
+            imageUrls: newImages.map(img => img.url) // Keep legacy field in sync
+          });
+        };
+
+        const handleGalleryUpload = async (files: FileList | null) => {
+          if (!files || files.length === 0) return;
+          setUploading(true);
+          setUploadingSectionId(section.id);
+          try {
+            const newImages: GalleryImage[] = [];
+            for (const file of Array.from(files)) {
+              const formData = new FormData();
+              formData.append("image", file);
+              const response = await api.post<{ url: string }>("/uploads", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+              });
+              newImages.push({ url: response.data.url, caption: "" });
+            }
+            updateGalleryImages([...galleryImages, ...newImages]);
+          } catch (err) {
+            console.error("Upload failed:", err);
+            alert("Failed to upload image(s)");
+          } finally {
+            setUploading(false);
+            setUploadingSectionId(null);
+          }
+        };
+
+        const removeGalleryImage = (index: number) => {
+          updateGalleryImages(galleryImages.filter((_, i) => i !== index));
+        };
+
+        const updateImageCaption = (index: number, caption: string) => {
+          const updated = [...galleryImages];
+          updated[index] = { ...updated[index], caption };
+          updateGalleryImages(updated);
+        };
+
         return (
           <>
             <div>
@@ -539,22 +547,33 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Gallery Images</label>
               
-              {/* Image grid */}
-              {imageUrls.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  {imageUrls.map((url, idx) => (
-                    <div key={idx} className="relative group aspect-square">
-                      <img
-                        src={url.startsWith("/") ? `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${url}` : url}
-                        alt={`Gallery ${idx + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => removeImage(section.id, url)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        {Icons.x}
-                      </button>
+              {/* Image grid with captions */}
+              {galleryImages.length > 0 && (
+                <div className="space-y-3 mb-3">
+                  {galleryImages.map((img, idx) => (
+                    <div key={idx} className="flex gap-2 items-start p-2 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="relative group w-16 h-16 flex-shrink-0">
+                        <img
+                          src={img.url.startsWith("/") ? `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${img.url}` : img.url}
+                          alt={`Gallery ${idx + 1}`}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => removeGalleryImage(idx)}
+                          className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          {Icons.x}
+                        </button>
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={img.caption || ""}
+                          onChange={(e) => updateImageCaption(idx, e.target.value)}
+                          placeholder="Add caption..."
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -567,7 +586,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                   accept="image/*"
                   multiple
                   className="hidden"
-                  onChange={(e) => handleImageUpload(section.id, e.target.files)}
+                  onChange={(e) => handleGalleryUpload(e.target.files)}
                   disabled={uploading && uploadingSectionId === section.id}
                 />
                 {uploading && uploadingSectionId === section.id ? (
@@ -721,11 +740,11 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
 
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-100 p-1 bg-gray-50/30">
-        {["sections", "design", "advanced"].map((tab) => (
+        {["sections", "design", "profile", "advanced"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as typeof activeTab)}
-            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-md transition-all duration-300 capitalize ${
+            className={`flex-1 px-2 py-2 text-[11px] font-semibold rounded-md transition-all duration-300 capitalize ${
               activeTab === tab
                 ? "text-blue-600 bg-white shadow-sm ring-1 ring-black/5"
                 : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
@@ -1061,6 +1080,264 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                       <img src={theme.bannerUrl} alt="Banner preview" className="h-16 w-full object-cover rounded" />
                     </div>
                   )}
+                </div>
+              </div>
+            </CollapsiblePanel>
+          </>
+        )}
+
+        {/* ============ PROFILE TAB ============ */}
+        {activeTab === "profile" && (
+          <>
+            <CollapsiblePanel
+              title="Company Branding"
+              icon={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              }
+            >
+              <div className="space-y-4">
+                {/* Company Logo Upload */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Company Logo</label>
+                  {company.logoUrl ? (
+                    <div className="relative group">
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <img 
+                          src={company.logoUrl.startsWith("/") ? `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${company.logoUrl}` : company.logoUrl}
+                          alt="Company Logo" 
+                          className="h-16 object-contain mx-auto" 
+                        />
+                      </div>
+                      <button
+                        onClick={() => onCompanyChange({ logoUrl: "" })}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        {Icons.x}
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 w-full py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingField("logo");
+                          try {
+                            const formData = new FormData();
+                            formData.append("image", file);
+                            const response = await api.post<{ url: string }>("/uploads", formData, {
+                              headers: { "Content-Type": "multipart/form-data" },
+                            });
+                            onCompanyChange({ logoUrl: response.data.url });
+                          } catch (err) {
+                            console.error("Upload failed:", err);
+                            alert("Failed to upload logo");
+                          } finally {
+                            setUploadingField(null);
+                          }
+                        }}
+                        disabled={uploadingField === "logo"}
+                      />
+                      {uploadingField === "logo" ? (
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      ) : (
+                        <>
+                          {Icons.upload}
+                          <span className="text-sm text-gray-600">Upload Logo</span>
+                        </>
+                      )}
+                    </label>
+                  )}
+                </div>
+
+                {/* Company Banner Upload */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Company Banner</label>
+                  {company.bannerUrl ? (
+                    <div className="relative group">
+                      <div className="aspect-[3/1] bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                        <img 
+                          src={company.bannerUrl.startsWith("/") ? `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${company.bannerUrl}` : company.bannerUrl}
+                          alt="Company Banner" 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                      <button
+                        onClick={() => onCompanyChange({ bannerUrl: "" })}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        {Icons.x}
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingField("banner");
+                          try {
+                            const formData = new FormData();
+                            formData.append("image", file);
+                            const response = await api.post<{ url: string }>("/uploads", formData, {
+                              headers: { "Content-Type": "multipart/form-data" },
+                            });
+                            onCompanyChange({ bannerUrl: response.data.url });
+                          } catch (err) {
+                            console.error("Upload failed:", err);
+                            alert("Failed to upload banner");
+                          } finally {
+                            setUploadingField(null);
+                          }
+                        }}
+                        disabled={uploadingField === "banner"}
+                      />
+                      {uploadingField === "banner" ? (
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      ) : (
+                        <>
+                          {Icons.upload}
+                          <span className="text-sm text-gray-600">Upload Banner</span>
+                        </>
+                      )}
+                    </label>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1">Recommended: 1200x400 pixels</p>
+                </div>
+
+                {/* Company Description */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Company Description</label>
+                  <textarea
+                    value={company.description || ""}
+                    onChange={(e) => onCompanyChange({ description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
+                    placeholder="Brief description of your company..."
+                  />
+                </div>
+              </div>
+            </CollapsiblePanel>
+
+            <CollapsiblePanel
+              title="Social Links"
+              icon={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              }
+            >
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 mb-3">Add your company's social media links. These will be displayed on your careers page.</p>
+                
+                {/* LinkedIn */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    LinkedIn
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.linkedin || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, linkedin: e.target.value } })}
+                    placeholder="https://linkedin.com/company/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Twitter/X */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    Twitter / X
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.twitter || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, twitter: e.target.value } })}
+                    placeholder="https://twitter.com/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Instagram */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                    </svg>
+                    Instagram
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.instagram || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, instagram: e.target.value } })}
+                    placeholder="https://instagram.com/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Facebook */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Facebook
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.facebook || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, facebook: e.target.value } })}
+                    placeholder="https://facebook.com/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* YouTube */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    YouTube
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.youtube || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, youtube: e.target.value } })}
+                    placeholder="https://youtube.com/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Website */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    Website
+                  </label>
+                  <input
+                    type="text"
+                    value={company.socialLinks?.website || ""}
+                    onChange={(e) => onCompanyChange({ socialLinks: { ...company.socialLinks, website: e.target.value } })}
+                    placeholder="https://yourcompany.com"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  />
                 </div>
               </div>
             </CollapsiblePanel>

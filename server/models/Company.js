@@ -13,11 +13,28 @@ const sectionThemeSchema = new mongoose.Schema(
 // Section config for type-specific options
 const sectionConfigSchema = new mongoose.Schema(
   {
+    // Video section
     videoUrl: { type: String },
-    imageUrls: [{ type: String }],
+    
+    // Gallery section - now supports captions
+    imageUrls: [{ type: String }], // Legacy support
+    images: [{
+      url: { type: String },
+      caption: { type: String, default: "" }
+    }],
+    
+    // CTA section
     ctaButtonText: { type: String },
     ctaButtonUrl: { type: String },
+    
+    // Text section
     layout: { type: String, enum: ["left", "center", "right"], default: "center" },
+    
+    // Hero section background
+    backgroundType: { type: String, enum: ["image", "color", "gradient"], default: "image" },
+    backgroundImageUrl: { type: String },
+    backgroundValue: { type: String }, // For color or gradient CSS
+    overlayOpacity: { type: Number, default: 0.4 },
   },
   { _id: false }
 );
@@ -60,7 +77,7 @@ const themeSchema = new mongoose.Schema(
     spacing: { type: String, enum: ["compact", "normal", "relaxed"], default: "normal" },
     buttonStyle: { type: String, enum: ["rounded", "pill", "sharp", "minimal"], default: "rounded" },
     
-    // Assets
+    // Assets (deprecated - use company.logoUrl and company.bannerUrl)
     logoUrl: { type: String, default: "" },
     bannerUrl: { type: String, default: "" },
     
@@ -69,6 +86,19 @@ const themeSchema = new mongoose.Schema(
     
     // Custom CSS
     customCSS: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+// Social links schema
+const socialLinksSchema = new mongoose.Schema(
+  {
+    linkedin: { type: String, default: "" },
+    twitter: { type: String, default: "" },
+    instagram: { type: String, default: "" },
+    facebook: { type: String, default: "" },
+    youtube: { type: String, default: "" },
+    website: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -91,6 +121,15 @@ const companySchema = new mongoose.Schema(
       ref: "Recruiter",
       required: true,
     },
+    
+    // Company branding (profile)
+    logoUrl: { type: String, default: "" },
+    bannerUrl: { type: String, default: "" },
+    description: { type: String, default: "" },
+    
+    // Social links
+    socialLinks: { type: socialLinksSchema, default: () => ({}) },
+    
     theme: { type: themeSchema, default: () => ({}) },
     content: { type: contentSchema, default: () => ({}) },
     sections: {

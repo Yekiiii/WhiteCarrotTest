@@ -70,6 +70,11 @@ export const CompanyPreview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [jobTypeFilter, setJobTypeFilter] = useState("");
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -98,6 +103,17 @@ export const CompanyPreview: React.FC = () => {
   const sortedSections = [...company.sections]
     .filter((s) => s.enabled)
     .sort((a, b) => a.order - b.order);
+
+  // Filter jobs based on search criteria
+  const filteredJobs = jobs.filter((job) => {
+    const matchesSearch = !searchTerm || 
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLocation = !locationFilter || 
+      job.location.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesType = !jobTypeFilter || job.jobType === jobTypeFilter;
+    return matchesSearch && matchesLocation && matchesType;
+  });
 
   const { theme, content } = company;
   const hasHeroSection = sortedSections.some(s => s.type === "hero");
@@ -181,22 +197,131 @@ export const CompanyPreview: React.FC = () => {
                 <h2 className="text-3xl font-bold mb-4" style={{ color: colors.textColor }}>{section.title}</h2>
                 {section.subtitle && <p style={{ color: colors.textColor, opacity: 0.7 }}>{section.subtitle}</p>}
               </div>
-              {jobs.length === 0 ? (
-                <p className="text-center" style={{ color: colors.textColor, opacity: 0.5 }}>No open positions at the moment.</p>
+
+              {/* Job Filters */}
+              <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Search Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Search jobs</label>
+                    <input
+                      type="text"
+                      placeholder="Title or keyword..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Location Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Remote, Berlin"
+                      value={locationFilter}
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Job Type Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Job type</label>
+                    <select
+                      value={jobTypeFilter}
+                      onChange={(e) => setJobTypeFilter(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-all cursor-pointer"
+                    >
+                      <option value="">All types</option>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Temporary">Temporary</option>
+                      <option value="Permanent">Permanent</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Clear Filters */}
+                {(searchTerm || locationFilter || jobTypeFilter) && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setLocationFilter("");
+                        setJobTypeFilter("");
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {filteredJobs.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-lg" style={{ color: colors.textColor, opacity: 0.6 }}>
+                    {jobs.length === 0 ? "No open positions at the moment." : "No jobs match your filters."}
+                  </p>
+                </div>
               ) : (
                 <div className="grid gap-6 lg:grid-cols-2">
-                  {jobs.map((job) => (
-                    <div key={job._id} className="bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow" style={{ borderRadius: theme.borderRadius }}>
-                      <h3 className="text-xl font-bold" style={{ color: colors.textColor }}>{job.title}</h3>
-                      <div className="mt-2 flex items-center gap-4 text-sm" style={{ color: colors.textColor, opacity: 0.6 }}>
-                        <span>📍 {job.location}</span>
-                        <span>💼 {job.jobType}</span>
+                  {filteredJobs.map((job) => (
+                    <article
+                      key={job._id}
+                      className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-gray-200 group"
+                      style={{ borderRadius: theme.borderRadius }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3
+                            className="text-xl font-bold transition-colors"
+                            style={{ color: colors.textColor }}
+                          >
+                            {job.title}
+                          </h3>
+                          <div
+                            className="mt-2 flex flex-wrap items-center gap-3 text-sm"
+                            style={{ color: colors.textColor, opacity: 0.6 }}
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              {job.location}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              {job.jobType}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-4 line-clamp-3" style={{ color: colors.textColor, opacity: 0.7 }}>{job.description}</p>
-                      <div className="mt-6">
-                        <button className="text-white px-4 py-2 rounded-md font-medium" style={{ backgroundColor: colors.accentColor, borderRadius: theme.borderRadius }}>Apply Now</button>
+                      <p
+                        className="mt-4 line-clamp-3 text-sm leading-relaxed"
+                        style={{ color: colors.textColor, opacity: 0.7 }}
+                      >
+                        {job.description}
+                      </p>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                        <span
+                          className="inline-block px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                          style={{
+                            backgroundColor: addAlpha(colors.accentColor, 0.1),
+                            color: colors.accentColor,
+                            borderRadius: theme.borderRadius,
+                          }}
+                        >
+                          View Details →
+                        </span>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               )}
