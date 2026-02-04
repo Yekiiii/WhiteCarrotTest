@@ -109,8 +109,22 @@ export const BrowseCompanies: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+      <style>{`
+        /* Smooth, GPU-friendly background pan */
+        .bg-animated {
+          background-size: 400% 400%;
+          animation: bgPan 18s cubic-bezier(.22,.9,.3,1) infinite;
+          will-change: background-position, filter;
+        }
+
+        @keyframes bgPan {
+          0% { background-position: 0% 50%; filter: hue-rotate(0deg); }
+          50% { background-position: 100% 50%; filter: hue-rotate(12deg); }
+          100% { background-position: 0% 50%; filter: hue-rotate(0deg); }
+        }
+      `}</style>
       {/* Header */}
-      <header className="bg-gradient-to-br from-blue-600 to-indigo-900 text-white">
+      <header className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white bg-animated">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link to="/browse" className="text-xl font-bold tracking-wider hover:opacity-90 transition-opacity">
             WhiteCarrot
