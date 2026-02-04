@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createJob, getJobs } from "../controllers/jobController.js";
+import { createJob, getJobs, createBulkJobs } from "../controllers/jobController.js";
 import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
@@ -12,5 +12,8 @@ router.get("/:companyId/jobs", getJobs);
 
 // POST /companies/:companyId/jobs - Protected
 router.post("/:companyId/jobs", authenticate, createJob);
+
+// POST /companies/:companyId/jobs/bulk - Protected (bulk add)
+router.post("/:companyId/jobs/bulk", authenticate, createBulkJobs);
 
 export default router;

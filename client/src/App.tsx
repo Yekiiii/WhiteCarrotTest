@@ -7,6 +7,7 @@ import { CompanyEditor } from "./pages/CompanyEditor";
 import { CompanyPreview } from "./pages/CompanyPreview";
 import { CareersPage } from "./pages/CareersPage";
 import { Dashboard } from "./pages/Dashboard";
+import { AddJobs } from "./pages/AddJobs";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/jobs/add" element={<ProtectedRoute><AddJobs /></ProtectedRoute>} />
           <Route 
             path="/:companySlug/edit" 
             element={

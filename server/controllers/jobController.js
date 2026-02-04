@@ -93,3 +93,45 @@ export const getJobs = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+/**
+ * POST /companies/:companyId/jobs/bulk
+ * Body: { jobs: [{ title, location, jobType, description }] }
+ * Protected: only the company owner can add jobs.
+ */
+export const createBulkJobs = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { jobs } = req.body;
+
+    if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
+      return res.status(400).json({ error: "Jobs array is required" });
+    }
+
+    // Verify company exists and belongs to recruiter
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+
+    if (company.recruiterId.toString() !== req.recruiter.id) {
+      return res.status(401).json({ error: "Not authorized" });
+    }
+
+    // Create all jobs
+    const createdJobs = await Job.insertMany(
+      jobs.map((job) => ({
+        companyId,
+        title: job.title,
+        location: job.location,
+        jobType: job.jobType,
+        description: job.description,
+      }))
+    );
+
+    res.status(201).json({ message: `${createdJobs.length} jobs created`, jobs: createdJobs });
+  } catch (err) {
+    console.error("Create bulk jobs error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
