@@ -135,3 +135,36 @@ export const createBulkJobs = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+/**
+ * DELETE /jobs/:jobId
+ * Protected: only the company owner can delete jobs.
+ */
+export const deleteJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    // Find the job
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    // Verify company belongs to recruiter
+    const company = await Company.findById(job.companyId);
+    if (!company) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+
+    if (company.recruiterId.toString() !== req.recruiter.id) {
+      return res.status(401).json({ error: "Not authorized" });
+    }
+
+    await Job.findByIdAndDelete(jobId);
+
+    res.json({ message: "Job deleted successfully" });
+  } catch (err) {
+    console.error("Delete job error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};

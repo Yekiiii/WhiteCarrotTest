@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createJob, getJobs, createBulkJobs } from "../controllers/jobController.js";
+import { createJob, getJobs, createBulkJobs, deleteJob } from "../controllers/jobController.js";
 import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
@@ -15,5 +15,8 @@ router.post("/:companyId/jobs", authenticate, createJob);
 
 // POST /companies/:companyId/jobs/bulk - Protected (bulk add)
 router.post("/:companyId/jobs/bulk", authenticate, createBulkJobs);
+
+// DELETE /jobs/:jobId - Protected
+router.delete("/:jobId", authenticate, deleteJob);
 
 export default router;
