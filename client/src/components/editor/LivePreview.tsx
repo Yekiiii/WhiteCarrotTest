@@ -16,7 +16,7 @@ interface LivePreviewProps {
 const resolveImageUrl = (url?: string) => {
   if (!url) return "";
   if (url.startsWith("/")) {
-    return `http://localhost:5000${url}`;
+    return `https://whitecarrottest.onrender.com${url}`;
   }
   return url;
 };
