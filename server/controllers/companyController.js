@@ -131,9 +131,9 @@ export const getAllPublicCompanies = async (req, res) => {
     );
 
     // Filter to only companies with at least 1 job (optional - can remove if you want all)
-    const companiesWithJobs = companiesWithJobCounts.filter((c) => c.jobCount > 0);
+    // const companiesWithJobs = companiesWithJobCounts.filter((c) => c.jobCount > 0);
 
-    res.json({ companies: companiesWithJobs });
+    res.json({ companies: companiesWithJobCounts });
   } catch (err) {
     console.error("Get all public companies error:", err);
     res.status(500).json({ error: "Server error" });
