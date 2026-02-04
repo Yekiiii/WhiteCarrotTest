@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import { type Company } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 // Mock Data Types
 interface Application {
@@ -47,17 +48,22 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, isPositive, i
 );
 
 export const Dashboard: React.FC = () => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCompany = async () => {
       try {
+        setLoading(true);
         const { data } = await api.get<{ company: Company }>('/companies/me');
         setCompany(data.company);
       } catch (error) {
         console.error('Failed to fetch company details', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchCompany();
@@ -74,6 +80,17 @@ export const Dashboard: React.FC = () => {
     };
     return styles[status as keyof typeof styles] || 'bg-gray-50 text-gray-600';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 font-medium animate-pulse">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex font-sans">
@@ -124,13 +141,23 @@ export const Dashboard: React.FC = () => {
           </button>
         </nav>
         
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 space-y-1">
            <button className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors font-medium">
              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             {sidebarOpen && "Settings"}
+          </button>
+          
+          <button 
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium group"
+          >
+            <svg className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            {sidebarOpen && "Logout"}
           </button>
         </div>
       </aside>

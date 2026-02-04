@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/axios';
 import { type Company, type Job } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 // Dummy job templates
 const DUMMY_JOBS = [
@@ -106,10 +107,12 @@ const DUMMY_JOBS = [
 const CATEGORIES = ['All', 'Engineering', 'Design', 'Product', 'Data', 'Marketing', 'Customer Success', 'Sales'];
 
 export const AddJobs: React.FC = () => {
+  const { logout } = useAuth();
   const [company, setCompany] = useState<Company | null>(null);
   const [existingJobs, setExistingJobs] = useState<Job[]>([]);
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [activeTab, setActiveTab] = useState<'add' | 'manage'>('manage');
@@ -125,6 +128,8 @@ export const AddJobs: React.FC = () => {
       setExistingJobs(jobsRes.data.jobs);
     } catch (error) {
       console.error('Failed to fetch company', error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -203,100 +208,124 @@ export const AddJobs: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 ${
-          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-        }`}>
-          {toast.type === 'success' ? (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-          {toast.message}
-          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      {initialLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 font-medium italic">Loading your workspace...</p>
         </div>
-      )}
-
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-800">Manage Jobs</h1>
-              <p className="text-sm text-gray-500">{existingJobs.length} active job{existingJobs.length !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          
-          {activeTab === 'add' && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500">
-                {selectedJobs.size} job{selectedJobs.size !== 1 ? 's' : ''} selected
-              </span>
-              <button
-                onClick={handleAddJobs}
-                disabled={loading || selectedJobs.size === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add Selected Jobs
-                  </>
-                )}
+      ) : (
+        <>
+          {/* Toast Notification */}
+          {toast && (
+            <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 ${
+              toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+            }`}>
+              {toast.type === 'success' ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {toast.message}
+              <button onClick={() => setToast(null)} className="ml-2 hover:opacity-80">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}
-        </div>
-      </header>
+
+          {/* Header */}
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link to="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </Link>
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-800">Manage Jobs</h1>
+                  <p className="text-sm text-gray-500">{existingJobs.length} active job{existingJobs.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                {activeTab === 'add' && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-500">
+                      {selectedJobs.size} job{selectedJobs.size !== 1 ? 's' : ''} selected
+                    </span>
+                    <button
+                      onClick={handleAddJobs}
+                      disabled={loading || selectedJobs.size === 0}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Add Selected Jobs
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                <div className="h-6 w-px bg-gray-200"></div>
+
+                <button
+                  onClick={logout}
+                  className="group flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  <div className="p-2 rounded-lg group-hover:bg-red-50 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            </div>
+          </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
-          <button
-            onClick={() => setActiveTab('manage')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'manage'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Current Jobs ({existingJobs.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('add')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'add'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Add from Templates
-          </button>
-        </div>
+            {/* Tabs */}
+            <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
+              <button
+                onClick={() => setActiveTab('manage')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'manage'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Current Jobs ({existingJobs.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('add')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'add'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Add from Templates
+              </button>
+            </div>
+
 
         {/* Manage Tab - Existing Jobs */}
         {activeTab === 'manage' && (
@@ -485,6 +514,8 @@ export const AddJobs: React.FC = () => {
           </>
         )}
       </main>
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 };
