@@ -824,7 +824,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                 strategy={verticalListSortingStrategy}
               >
                 {/* Dynamic Sections */}
-                {sortedSections.map((section, index) => (
+                {sortedSections.map((section) => (
                   <SortableItem key={section.id} id={section.id}>
                     {(listeners) => (
                       <div

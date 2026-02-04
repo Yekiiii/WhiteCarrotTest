@@ -2,21 +2,19 @@
 Website URL: https://white-carrot-test-57vh.vercel.app
 API : https://whitecarrottest.onrender.com
 
-WhiteCarrot is a specialized content management system (CMS) for company career pages. It allows recruiters to manage job postings and design a branded career site without writing code.
 
----
 
-##  What I Built
+What I Built
 
 A full-stack MERN application that serves two distinct user groups:
 
-  **Recruiters**:
+Recruiters:
 1) Analytics overview and quick actions.
 2) A "What You See Is What You Get" (WYSIWYG) editor for the public career page. Supports custom sections (Hero, Text, Gallery, Video, Jobs).
 3) A tool to create jobs effectively, including a "Bulk Add" feature using templates.
 4) Secure login/registration flows with persistent sessions.
 
-**Candidates** (Public View):
+Candidates (Public View):
 1) A dynamic, branded page displaying the company's content and open roles.
 2) Ability to filter roles by category/department.
 
@@ -26,7 +24,7 @@ A full-stack MERN application that serves two distinct user groups:
 
  Prerequisites
 Node.js (v16+)
-MongoDB (running locally or Atlas URI)
+MongoDB (running locally or Atlas)
 
 ### 1. Backend Setup
 ```bash
