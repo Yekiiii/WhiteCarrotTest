@@ -167,6 +167,9 @@ export const CareersPage: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [jobTypeFilter, setJobTypeFilter] = useState("");
   
+  // Initial loading state
+  const [initialLoading, setInitialLoading] = useState(true);
+  
   // Debounce search to prevent excessive API calls
   useEffect(() => {
     setCurrentPage(1);
@@ -179,7 +182,7 @@ export const CareersPage: React.FC = () => {
     const fetchCompanyAndJobs = async () => {
       try {
         if (!companySlug) return;
-        setLoading(true);
+        if (initialLoading) setLoading(true);
         
         // 1. Fetch Company
         const companyRes = await api.get<{ company: Company }>(
@@ -203,16 +206,18 @@ export const CareersPage: React.FC = () => {
         
         setJobs(jobsRes.data.jobs);
         setTotalPages(jobsRes.data.pages);
+        setInitialLoading(false);
       } catch (err) {
         console.error(err);
         setError("Company not found");
+        setInitialLoading(false);
       } finally {
         setLoading(false);
       }
     };
     
     fetchCompanyAndJobs();
-  }, [companySlug, currentPage, searchTerm, locationFilter, jobTypeFilter]);
+  }, [companySlug, currentPage, searchTerm, locationFilter, jobTypeFilter, initialLoading]);
 
   // Extract unique locations and job types - NOTE: This ideally should come from backend aggregation 
   // since we only fetch one page of jobs now. For now, we might lose some filter options if they aren't on page 1.
