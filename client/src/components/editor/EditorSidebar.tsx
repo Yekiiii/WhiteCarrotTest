@@ -4,6 +4,23 @@ import { CollapsiblePanel } from "./CollapsiblePanel";
 import { ColorPicker } from "./ColorPicker";
 import { StylePresets, type StylePreset } from "./StylePresets";
 import api from "../../lib/axios";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface EditorSidebarProps {
   company: Company;
@@ -94,6 +111,32 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
   ),
+  drag: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+    </svg>
+  ),
+};
+
+interface SortableItemProps {
+  id: string;
+  children: (listeners: any) => React.ReactNode;
+}
+
+const SortableItem = ({ id, children }: SortableItemProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} className="touch-none">
+      {children(listeners)}
+    </div>
+  );
 };
 
 const FONT_OPTIONS = [
@@ -152,6 +195,31 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const sortedSections = [...sections].sort((a, b) => a.order - b.order);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedSections.findIndex((s) => s.id === active.id);
+      const newIndex = sortedSections.findIndex((s) => s.id === over.id);
+
+      const newSections = arrayMove(sortedSections, oldIndex, newIndex);
+      const updated = newSections.map((section, index) => ({
+        ...section,
+        order: index,
+      }));
+      onSectionsChange(updated);
+    }
+  };
 
   const handleApplyPreset = (preset: StylePreset) => {
     onThemeBatchUpdate({
@@ -212,19 +280,6 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
     onSectionsChange(newSections);
   };
 
-  const moveSection = (sectionId: string, direction: "up" | "down") => {
-    const sortedSections = [...sections].sort((a, b) => a.order - b.order);
-    const index = sortedSections.findIndex((s) => s.id === sectionId);
-    if (index === -1) return;
-    if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === sortedSections.length - 1) return;
-
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    [sortedSections[index], sortedSections[targetIndex]] = [sortedSections[targetIndex], sortedSections[index]];
-    sortedSections.forEach((s, i) => (s.order = i));
-    onSectionsChange(sortedSections);
-  };
-
   const getDefaultTitle = (type: string): string => {
     const defaults: Record<string, string> = {
       hero: "Welcome",
@@ -279,8 +334,6 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
       setUploadingSectionId(null);
     }
   };
-
-  const sortedSections = [...sections].sort((a, b) => a.order - b.order);
 
   // Render section-specific fields
   const renderSectionFields = (section: Section) => {
@@ -761,122 +814,167 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
         {activeTab === "sections" && (
           <div className="p-3 space-y-2">
             
-            {/* Dynamic Sections */}
-            {sortedSections.map((section, index) => (
-              <div
-                key={section.id}
-                className={`rounded-xl border transition-all ${
-                  expandedSection === section.id
-                    ? "border-blue-300 bg-blue-50/30 shadow-sm"
-                    : "border-gray-100 bg-white hover:border-gray-200"
-                }`}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sortedSections.map((s) => s.id)}
+                strategy={verticalListSortingStrategy}
               >
-                {/* Section Header */}
-                <div
-                  className="flex items-center gap-2 px-3 py-2.5 cursor-pointer"
-                  onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
-                >
-                  <span className={`${section.enabled ? "text-blue-600" : "text-gray-400"}`}>
-                    {getSectionIcon(section.type)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm text-gray-900 truncate block">
-                      {section.title || "Untitled Section"}
-                    </span>
-                    <span className="text-[10px] uppercase text-gray-400 font-semibold tracking-wide">
-                      {section.type}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); updateSection(section.id, { enabled: !section.enabled }); }}
-                      className={`p-1.5 rounded-md transition-all ${section.enabled ? "text-green-600 bg-green-50" : "text-gray-400 bg-gray-100"}`}
-                      title={section.enabled ? "Hide section" : "Show section"}
-                    >
-                      {section.enabled ? Icons.eye : Icons.eyeOff}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveSection(section.id, "up"); }}
-                      disabled={index === 0}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all disabled:opacity-30"
-                    >
-                      {Icons.chevronUp}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveSection(section.id, "down"); }}
-                      disabled={index === sortedSections.length - 1}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-all disabled:opacity-30"
-                    >
-                      {Icons.chevronDown}
-                    </button>
-                    <span className={`transition-transform ${expandedSection === section.id ? "rotate-180" : ""}`}>
-                      {Icons.chevronDown}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Section Content (Expanded) */}
-                {expandedSection === section.id && (
-                  <div className="px-3 pb-3 space-y-3 border-t border-gray-100 pt-3">
-                    {renderSectionFields(section)}
-
-                    {/* Section-specific Theme Override */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">Section Style</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Background</label>
-                          <input
-                            type="color"
-                            value={section.theme?.backgroundColor || theme.backgroundColor}
-                            onChange={(e) => updateSectionTheme(section.id, { backgroundColor: e.target.value })}
-                            className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Text</label>
-                          <input
-                            type="color"
-                            value={section.theme?.textColor || theme.textColor}
-                            onChange={(e) => updateSectionTheme(section.id, { textColor: e.target.value })}
-                            className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-1">Accent</label>
-                          <input
-                            type="color"
-                            value={section.theme?.accentColor || theme.accentColor}
-                            onChange={(e) => updateSectionTheme(section.id, { accentColor: e.target.value })}
-                            className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
-                          />
-                        </div>
-                      </div>
-                      {section.theme && Object.keys(section.theme).length > 0 && (
-                        <button
-                          onClick={() => updateSection(section.id, { theme: undefined })}
-                          className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
-                        >
-                          Reset to global theme
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Delete Section */}
-                    <div className="pt-2">
-                      <button
-                        onClick={() => deleteSection(section.id)}
-                        disabled={sections.length <= 1}
-                        className="w-full py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                {/* Dynamic Sections */}
+                {sortedSections.map((section, index) => (
+                  <SortableItem key={section.id} id={section.id}>
+                    {(listeners) => (
+                      <div
+                        className={`rounded-xl border transition-all ${
+                          expandedSection === section.id
+                            ? "border-blue-300 bg-blue-50/30 shadow-sm"
+                            : "border-gray-100 bg-white hover:border-gray-200"
+                        }`}
                       >
-                        {Icons.trash}
-                        Delete Section
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                        {/* Section Header */}
+                        <div
+                          className="flex items-center gap-2 px-3 py-2.5 cursor-pointer"
+                          onClick={() =>
+                            setExpandedSection(expandedSection === section.id ? null : section.id)
+                          }
+                        >
+                          <div
+                            className="cursor-grab text-gray-400 hover:text-gray-600"
+                            {...listeners}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {Icons.drag}
+                          </div>
+                          <span
+                            className={`${section.enabled ? "text-blue-600" : "text-gray-400"}`}
+                          >
+                            {getSectionIcon(section.type)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-sm text-gray-900 truncate block">
+                              {section.title || "Untitled Section"}
+                            </span>
+                            <span className="text-[10px] uppercase text-gray-400 font-semibold tracking-wide">
+                              {section.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateSection(section.id, { enabled: !section.enabled });
+                              }}
+                              className={`p-1.5 rounded-md transition-all ${
+                                section.enabled
+                                  ? "text-green-600 bg-green-50"
+                                  : "text-gray-400 bg-gray-100"
+                              }`}
+                              title={section.enabled ? "Hide section" : "Show section"}
+                            >
+                              {section.enabled ? Icons.eye : Icons.eyeOff}
+                            </button>
+                            <span
+                              className={`transition-transform ${
+                                expandedSection === section.id ? "rotate-180" : ""
+                              }`}
+                            >
+                              {Icons.chevronDown}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Section Content (Expanded) */}
+                        {expandedSection === section.id && (
+                          <div className="px-3 pb-3 space-y-3 border-t border-gray-100 pt-3">
+                            {renderSectionFields(section)}
+
+                            {/* Section-specific Theme Override */}
+                            <div className="pt-2 border-t border-gray-100">
+                              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">
+                                Section Style
+                              </label>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-[10px] text-gray-500 mb-1">
+                                    Background
+                                  </label>
+                                  <input
+                                    type="color"
+                                    value={
+                                      section.theme?.backgroundColor || theme.backgroundColor
+                                    }
+                                    onChange={(e) =>
+                                      updateSectionTheme(section.id, {
+                                        backgroundColor: e.target.value,
+                                      })
+                                    }
+                                    className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-500 mb-1">
+                                    Text
+                                  </label>
+                                  <input
+                                    type="color"
+                                    value={section.theme?.textColor || theme.textColor}
+                                    onChange={(e) =>
+                                      updateSectionTheme(section.id, {
+                                        textColor: e.target.value,
+                                      })
+                                    }
+                                    className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-500 mb-1">
+                                    Accent
+                                  </label>
+                                  <input
+                                    type="color"
+                                    value={section.theme?.accentColor || theme.accentColor}
+                                    onChange={(e) =>
+                                      updateSectionTheme(section.id, {
+                                        accentColor: e.target.value,
+                                      })
+                                    }
+                                    className="w-full h-8 rounded-md cursor-pointer border border-gray-200"
+                                  />
+                                </div>
+                              </div>
+                              {section.theme &&
+                                Object.keys(section.theme).length > 0 && (
+                                  <button
+                                    onClick={() => updateSection(section.id, { theme: undefined })}
+                                    className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
+                                  >
+                                    Reset to global theme
+                                  </button>
+                                )}
+                            </div>
+
+                            {/* Delete Section */}
+                            <div className="pt-2">
+                              <button
+                                onClick={() => deleteSection(section.id)}
+                                disabled={sections.length <= 1}
+                                className="w-full py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {Icons.trash}
+                                Delete Section
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
 
             {/* Add Section */}
             <div className="pt-3 border-t border-gray-100">
@@ -1045,7 +1143,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
               </div>
             </CollapsiblePanel>
 
-            <CollapsiblePanel
+            {/* <CollapsiblePanel
               title="Images & Assets"
               icon={Icons.gallery}
               defaultOpen={false}
@@ -1082,7 +1180,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                   )}
                 </div>
               </div>
-            </CollapsiblePanel>
+            </CollapsiblePanel> */}
           </>
         )}
 

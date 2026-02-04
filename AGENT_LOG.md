@@ -1,0 +1,4 @@
+I've used AI tools to streamline my workflow here. I use github copilot as my in-IDE agent. Which writes majority of my code. The LLM depends on the size of the prompt + complexity of the request.
+But before i feed any prompts to copilot, i always use ChatGPT / Gemini as a validation layer for any logical / fundamental flaws with flows and schemas. I would feed in the problem and the solution that I thought of, and see what adjustments & improvements I can make. 
+I break down my required goal into phases so that Copilot doesn't start halucinating solutions because of the size of the request / lack of context. I make detailed prompts with the help of ChatGPT / Gemini and then feed it to Copilot. 
+Then i ask copilot to give me response documents, which I give to GPT / Gemini, and ask it to make test cases for normal and edge cases. If all test cases pass, I move on to the next phase.  
