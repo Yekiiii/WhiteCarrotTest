@@ -100,9 +100,9 @@ export const Dashboard: React.FC = () => {
       >
         <div className="p-6 flex items-center gap-3 border-b border-gray-100">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm md:shrink-0">
-            W
+            T
           </div>
-          {sidebarOpen && <span className="font-bold text-lg tracking-tight text-gray-900">WhiteCarrot</span>}
+          {sidebarOpen && <span className="font-bold text-lg tracking-tight text-gray-900">TalentForge</span>}
         </div>
 
         <nav className="flex-1 p-4 space-y-1">

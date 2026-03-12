@@ -104,7 +104,7 @@ export const Login: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800" />
         <div className="absolute inset-0 flex flex-col justify-between p-12 text-white z-10">
           <div>
-            <h1 className="text-2xl font-bold tracking-wider">WhiteCarrot</h1>
+            <h1 className="text-2xl font-bold tracking-wider">TalentForge</h1>
           </div>
           <div className="space-y-4">
             <h2 className="text-4xl font-bold leading-tight">
@@ -116,7 +116,7 @@ export const Login: React.FC = () => {
             </p>
           </div>
           <div className="text-sm text-blue-200">
-            © {new Date().getFullYear()} WhiteCarrot. All rights reserved.
+            © {new Date().getFullYear()} TalentForge. All rights reserved.
           </div>
         </div>
         

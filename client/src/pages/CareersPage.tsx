@@ -141,7 +141,7 @@ const useDocumentHead = (company: Company | null, jobs: Job[]) => {
 
     // Cleanup
     return () => {
-      document.title = "WhiteCarrot";
+      document.title = "TalentForge";
     };
   }, [company, jobs]);
 };

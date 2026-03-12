@@ -90,9 +90,9 @@ export const BrowseCompanies: React.FC = () => {
 
   // Update document title
   useEffect(() => {
-    document.title = "Browse Companies - WhiteCarrot Jobs";
+    document.title = "Browse Companies - TalentForge Jobs";
     return () => {
-      document.title = "WhiteCarrot";
+      document.title = "TalentForge";
     };
   }, []);
 
@@ -127,7 +127,7 @@ export const BrowseCompanies: React.FC = () => {
       <header className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white bg-animated">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <Link to="/browse" className="text-xl font-bold tracking-wider hover:opacity-90 transition-opacity">
-            WhiteCarrot
+            TalentForge
           </Link>
           <div className="flex items-center gap-4">
             <Link
@@ -338,7 +338,7 @@ export const BrowseCompanies: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-6">
-              <span className="text-lg font-bold text-gray-900">WhiteCarrot</span>
+              <span className="text-lg font-bold text-gray-900">TalentForge</span>
               <span className="text-sm text-gray-500">
                 The modern careers page builder
               </span>
@@ -353,7 +353,7 @@ export const BrowseCompanies: React.FC = () => {
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-gray-100 text-center text-sm text-gray-400">
-            © {new Date().getFullYear()} WhiteCarrot. All rights reserved.
+            © {new Date().getFullYear()} TalentForge. All rights reserved.
           </div>
         </div>
       </footer>
